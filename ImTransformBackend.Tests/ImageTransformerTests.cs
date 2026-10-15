@@ -12,7 +12,7 @@ namespace ImTransformBackend.Tests
         {
             byte[] pixels = [255, 0, 0, 123];
 
-            ImageTransformer.TransformImage(pixels, width: 1, height: 1);
+            ImageTransformer.TransformImage(pixels, width: 1, height: 1, wasmFile: "Native/grayscale.cpp.wasm");
 
             byte expectedGray = (byte)((77 * 255) >> 8);
 
@@ -27,7 +27,7 @@ namespace ImTransformBackend.Tests
             byte[] pixels = [1, 2, 3];
 
             Assert.Throws<ArgumentException>(
-                () => ImageTransformer.TransformImage(pixels, width: 1, height: 1));
+                () => ImageTransformer.TransformImage(pixels, width: 1, height: 1, wasmFile: "Native/grayscale.cpp.wasm"));
         }
 
         [Fact]
@@ -36,7 +36,7 @@ namespace ImTransformBackend.Tests
             byte[] pixels = [1, 2, 3, 4];
             byte[] original = (byte[])pixels.Clone();
 
-            ImageTransformer.TransformImage(pixels, width: 0, height: 1);
+            ImageTransformer.TransformImage(pixels, width: 0, height: 1, wasmFile: "Native/grayscale.cpp.wasm");
 
             Assert.Equal(original, pixels);
         }
