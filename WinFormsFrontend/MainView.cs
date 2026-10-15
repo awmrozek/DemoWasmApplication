@@ -22,13 +22,19 @@ namespace WinFormsFrontend
 
         private void ApplyTransformation()
         {
+            if (string.IsNullOrEmpty(cbPickFilter.Text))
+            {
+                return;
+            }
+
             if (pictureBox.Image is not Bitmap bitmap)
             {
                 return;
             }
 
+            string wasmFile = "Native/" + cbPickFilter.Text;
             var (pixels, width, height) = DemoToolkit.ToRgba(bitmap);
-            ImageTransformer.TransformImage(pixels, width, height);
+            ImageTransformer.TransformImage(pixels, width, height, wasmFile);
 
             var result = DemoToolkit.ToBitmap(pixels, width, height);
             pictureBox.Image?.Dispose();

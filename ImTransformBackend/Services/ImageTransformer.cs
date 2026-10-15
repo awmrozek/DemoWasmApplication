@@ -1,32 +1,69 @@
-﻿namespace ImTransformBackend.Services
+﻿using Wasmtime;
+
+namespace ImTransformBackend.Services
 {
     public static class ImageTransformer
     {
-        // pixels must contain width * height * 4 bytes in RGBA order.
-        public static void TransformImage(byte[] pixels, int width, int height)
+        public static void TransformImage(
+            byte[] pixels,
+            int width,
+            int height,
+            string wasmFile)
         {
             ArgumentNullException.ThrowIfNull(pixels);
+            ArgumentException.ThrowIfNullOrWhiteSpace(wasmFile);
 
             if (width <= 0 || height <= 0)
                 return;
 
             int requiredLength = checked(width * height * 4);
             if (pixels.Length < requiredLength)
-                throw new ArgumentException("Pixel buffer is too small.", nameof(pixels));
+                throw new ArgumentException(
+                    "Pixel buffer is too small.",
+                    nameof(pixels));
 
-            for (int i = 0; i < width * height; i++)
+            using var engine = new Engine();
+            using var module = Module.FromFile(engine, wasmFile);
+            using var linker = new Linker(engine);
+            using var store = new Store(engine);
+
+            var instance = linker.Instantiate(store, module);
+
+            var memory = instance.GetMemory("memory")
+                ?? throw new InvalidOperationException(
+                    "Wasm module does not export memory named 'memory'.");
+
+            var alloc = instance.GetFunction<int, int>("alloc")
+                ?? throw new InvalidOperationException(
+                    "Wasm module does not export alloc(int) -> int.");
+
+            var free = instance.GetAction<int, int>("free_buffer")
+                ?? throw new InvalidOperationException(
+                    "Wasm module does not export free_buffer(int, int).");
+
+            var filter = instance.GetAction<int, int, int>("filter")
+                ?? throw new InvalidOperationException(
+                    "Wasm module does not export filter(int, int, int).");
+
+            int address = alloc(requiredLength);
+            if (address <= 0)
+                throw new InvalidOperationException(
+                    "The wasm module could not allocate a pixel buffer.");
+
+            try
             {
-                int offset = i * 4;
+                pixels.AsSpan(0, requiredLength)
+                    .CopyTo(memory.GetSpan<byte>(address).Slice(0, requiredLength));
 
-                byte gray = (byte)(
-                    (77 * pixels[offset] +
-                     150 * pixels[offset + 1] +
-                     29 * pixels[offset + 2]) >> 8);
+                filter(address, width, height);
 
-                pixels[offset] = gray;
-                pixels[offset + 1] = gray;
-                pixels[offset + 2] = gray;
-                // Keep pixels[offset + 3] (alpha) unchanged.
+                memory.GetSpan<byte>(address)
+                    .Slice(0, requiredLength)
+                    .CopyTo(pixels.AsSpan(0, requiredLength));
+            }
+            finally
+            {
+                free(address, requiredLength);
             }
         }
     }
