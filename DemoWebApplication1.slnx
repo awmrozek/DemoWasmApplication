@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="ImTransformBackend.Tests/ImTransformBackend.Tests.csproj" />
+  <Project Path="ImTransformBackend/ImTransformBackend.csproj" />
+  <Project Path="WinFormsFrontend/WinFormsFrontend.csproj" Id="4f995d08-9345-4e89-b94e-7589775d5434" />
+</Solution>
